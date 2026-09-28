@@ -114,27 +114,61 @@ Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; the building
 <!-- One complete question and answer, pasted as text, with the source line
      visible. Milestone 4. -->
 
-**Question:**
+**Question:** Which course is the heaviest first-year course by reputation and how many exams does it have per semester?
 
 **Answer:**
 
-```
+Based on course_biol_160_workload.txt and course_biol_160.txt, BIOL 160
+Cell Biology is the heaviest first-year course by reputation. According to
+course_biol_160.txt, it has four unit tests and a cumulative final per
+semester.
+
+Sources retrieved: admin_graduation_requirements.txt, admin_pass_fail_option.txt,
+course_biol_160.txt, course_biol_160_workload.txt, course_cs_340.txt
+
+Produced by `app.py::ask_pipeline`, which calls `generate.py::answer_from_chunks`.
+Best distance 0.4844, under the 0.55 cutoff.
+
+``
 ```
 
 **My relevance cutoff:**
 
-<!-- The number you set in config.py, and how you got there.
+**My relevance cutoff:** 0.55
 
-     You ran five questions your corpus covers and the five in OUT_OF_SCOPE
-     that it clearly doesn't, and wrote down the best distance for each. What
-     did those two groups look like? Where was the gap? Put the actual numbers
-     here — the table below wants all ten rows.
+I ran all ten questions through `app.py retrieve`, which reports distances
+without spending a model call, and recorded the best distance for each.
 
-     Milestone 4. -->
+The two groups don't overlap and they don't even come close. The worst
+in-corpus question landed at 0.4844; the closest out-of-scope question at
+0.8232. That leaves 0.3388 of empty space with nothing in it.
+
+I moved the cutoff down from the starter's 0.6 rather than up. Both directions
+pass all ten, so the ten numbers alone don't decide it — what decides it is
+which failure I'd rather have. A confident wrong answer is harder to notice
+than a refusal, so I'd rather the system refuse a question it could have
+answered than answer one it couldn't.
+
+I first tried 0.5 and backed off. It clears 0.4844 by only 0.0156, and I know
+that number moves: adding a single `?` to my ECON 101 question shifted its
+distance from 0.3504 to 0.3438. One punctuation mark is worth 0.0066, so 0.5
+gives me about two punctuation marks of room. 0.4844 is the worst distance
+among the five questions I happened to write, not the worst a real question
+could produce. 0.55 keeps 0.0656 — roughly ten times the punctuation effect —
+and still refuses all five out-of-scope questions by a margin of 0.27.
 
 | Question | In corpus? | Best distance |
 |---|---|---|
-|  |  |  |
+| What is the expected workload for ECON101? | Yes | 0.3438 |
+| What type of clothing is recommended during winter, and by what time are the paths cleared on weekdays? | Yes | 0.3617 |
+| For students need whiteboards, which study rooms should they go? | Yes | 0.3656 |
+| In Aldridge hall, which floors are quiet floors and how many washers and dryers does it have? | Yes | 0.4139 |
+| Which course is the heaviest first-year course by reputation and how many exams does it have per semester? | Yes | 0.4844 |
+| What is the capital of Mongolia? | No | 0.8232 |
+| What is the recommended dosage of ibuprofen for a headache? | No | 0.8442 |
+| Who won the 1994 World Cup? | No | 0.8859 |
+| How do I write a for loop in Rust? | No | 0.8960 |
+| How do I change the oil in a diesel engine? | No | 0.9340 |
 
 ## How I Used AI
 
