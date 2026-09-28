@@ -26,6 +26,8 @@ contains the answer.
 <!-- e.g. "One of my questions is about a topic only two documents mention, so
      I expect that one to be hard." -->
 
+Because most questions are factual, retrievers should be able to locate relevant chunks in most cases. 
+
 ---
 
 ## 2. Every answer names a source
@@ -35,6 +37,7 @@ Every answer the system produces names at least one source document.
 **Why this target:**
 <!-- Why all five and not four? What about your setup makes that achievable —
      or what would have to go wrong for it not to be? -->
+Naming a source allow users to verify where the information came from
 
 ---
 
@@ -52,46 +55,26 @@ in at least 4 of 5 tries.
 **Why this target:**
 <!-- What did your distances look like when you set the cutoff in Milestone 4?
      Was there a clean gap, or did the two groups overlap? -->
-
+The system should recognize when the corpus doesn't contain the answer instead of generating an unsupported response. 
 ---
 
-## 4. Something about your chunks
-
-<!-- YOU WRITE THIS ONE.
-
-     How would you know if your chunks were the right size? Name something
-     countable or observable.
-
-     Examples of the right shape — don't copy these, they should come from
-     what you actually saw in Milestone 3:
-       - "At least 4 of 5 sampled chunks read as a complete thought, with no
-          sentence cut in half at either end."
-       - "No chunk is shorter than 200 characters, since anything below that
-          in my corpus turned out to be a heading with no content under it." -->
-
-
+## 4. Complete factual statement
+4/5 randomly selected chunks should include a complete factual statement that doesn't require another chunk to understand it.
 
 **Why this target:**
+I chose this criterion because my test questions are factual so most chunks should contain enough context for a fact to be understood on its own. I chose 4 out of 5 because I expect this to be true for most chunks, while allowing for occasional chunks depend on surrounding context. 
 
 
 
 ---
 
-## 5. Your choice
-
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. It could be about
-     speed, about refusals, about a particular kind of question your corpus
-     handles badly, about source attribution being correct rather than merely
-     present — anything, as long as it names a number or an observable
-     outcome. -->
+## 5. Multi-document Retrieval
+For 4 out of 5 cross-document questions, the retrieved chunks should include information from all documents needed to answer the question.
 
 
 
 **Why this target:**
-
-
+Some questions need information from more than one document. Retrieving only one document may lead to an incomplete answer. I want to make sure the retriever can find all the necessary information rather than only one relevant document.
 
 ---
 

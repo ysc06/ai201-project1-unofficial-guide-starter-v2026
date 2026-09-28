@@ -29,8 +29,8 @@
 
 ## Chunking Strategy
 
-**Chunk size:**
-**Overlap:**
+**Chunk size:** 800
+**Overlap:** 0 
 
 <!-- What about YOUR documents made you pick these numbers? Short posts and
      long sectioned guides don't want the same chunking, and "800 seemed
@@ -41,6 +41,13 @@
      more than pretending you got it right first time.
 
      Milestone 3. -->
+
+
+My 14 documents are Markdown guides divided into `##` sections. I measured all 98 sections across the corpus: median 284 characters, longest 711, and not one of them exceeds 800.
+
+The starter chunker doesn't see those sections. It counts 800 characters from the start of the whole document and cuts there, which lands in the middle of a section. 35 of its 51 chunks (68%) begin mid-word. The shortest, `guide_eating.md#3`, is 24 characters: `"d Sundays and after 5pm."` — the tail of "Elder Ness has one shop, closed Sundays and after 5pm.", with the town name and the word "closed" cut away.
+
+So I split on `##` section boundaries instead. Because the longest section is 711, CHUNK_SIZE = 800 becomes a safety cap that never fires on this corpus. I set overlap to 0 because overlap exists to rescue sentences cut at arbitrary positions, and splitting on section boundaries never cuts a sentence.
 
 ## Sample Chunks
 
@@ -54,44 +61,53 @@
      Milestone 3. -->
 
 ======================================================================
-Chunk 1  |  source: thread_bike_commute.txt#0  |  produced by: chunker.py::fallback_split
+Chunk 1  |  source: admin_add_drop_deadline.txt#0  |  produced by: chunker.py::split_documents | function: def split_documents
 ======================================================================
-THREAD: Is a bike worth it for a 20 minute walk commute?
+On the add/drop deadline
 
---- reply 1 (14 votes) ---
-Yeah. Cuts an 18 minute walk to about 6. The thing nobody mentions is storage — covered bike parking exists at three buildings and is full by9am at all three.
+You can add a course through the end of the second week. Dropping is a longer window — through the end of week six — but a drop after week two shows as a W on your transcript. Nothing anywhere on the registrar's site says this plainly, and students find out from each other.
 
---- reply 2 (9 votes) ---
-Counterpoint, I sold mine. Between November and March the paths are either icy or salted and salt destroys a drivetrain in one season.
+======================================================================
+Chunk 2  |  source: course_biol_160.txt#0  |  produced by: chunker.py::split_documents | function: def split_documents
+======================================================================
+BIOL 160 Cell Biology
 
---- reply 3 (22 votes) ---
-Both true. I keep a cheap bike for September to November and walk the rest of the year. Total cost was about $120 for the bike and I don't care what happens to it.
+I lived here my sophomore year. Format is lecture three times a week with a weekly lab. Assessment: four unit tests and a cumulative final. Not curved.
 
---- reply 4 (5 votes) ---
-If you do get one, the campus does free registration and it's the only reason I got mine back after it was taken.
+Expect 9 to 11 hours a week, the heaviest first-year course by reputation.
 
-For each one, ask: could someone answer a question using only this,
-without reading what came before or after?
+The one piece of advice: the unit tests come fast, roughly every three weeks; falling behind once is very hard to recover from.
 
-**Chunk 2** — source: `` — produced by: ``
+======================================================================
+Chunk 3  |  source: course_hist_118_workload.txt#0  |  produced by: chunker.py::split_documents | function: def split_documents
+======================================================================
+Workload for HIST 118 Modern World History
 
-```
-```
+People keep asking so: a lot of reading, about 120 pages a week, but no problem sets. That's real time, not optimistic time.
 
-**Chunk 3** — source: `` — produced by: ``
+It's front-loaded — the first month is heavier than the rest, partly because you're learning the format.
 
-```
-```
+======================================================================
+Chunk 4  |  source: dining_pellew_dining_hall_followup.txt#0  |  produced by: chunker.py::split_documents | function: def split_documents
+======================================================================
+Re: Pellew Dining Hall
 
-**Chunk 4** — source: `` — produced by: ``
+Adding to what people have said about Pellew Dining Hall. The wait figure of 12 to 18 minutes at peak matches what I've seen. If you're trying to eat between classes, go before 11:45 and it's a different building entirely.
 
-```
-```
+Also worth saying: the furthest hall from anywhere, next to the athletics centre. Nobody tells you this at orientation.
 
-**Chunk 5** — source: `` — produced by: ``
+======================================================================
+Chunk 5  |  source: housing_innisfree_hall.txt#0  |  produced by: chunker.py::split_documents | function: def split_documents
+======================================================================
+Innisfree Hall — what it's actually like
 
-```
-```
+Transferred in last year, so take this with a grain of salt. Built 1991, renovated 2022. Rooms are doubles arranged as pairs sharing one bathroom between two rooms.
+
+The good: the shared-bathroom-between-two-rooms arrangement is the best compromise on campus.
+
+The bad: no air conditioning, which matters for the first three weeks of September.
+
+Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; the building is L-shaped and the short wing is much quieter.
 
 ## Sample Answer
 
