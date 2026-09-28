@@ -21,33 +21,55 @@
 
 ## What This Does
 
-<!-- Three or four sentences. Which corpus you picked, and the kinds of
-     questions your system answers. Write it for someone who has never seen
-     this repo.
+This answers questions about campus life at a university, using a corpus of 88
+short posts written by students — course workloads and exam formats, what each
+residence hall is actually like, dining hall wait times, and administrative
+deadlines like add/drop and pass/fail. Each post covers one topic in a few
+sentences, in the voice of someone who took the course or lived in the building.
 
-     Milestone 5. -->
+It handles questions with a specific factual answer: "What is the expected
+workload for ECON 101?", "Which study rooms have whiteboards?", "In Aldridge
+Hall, which floors are quiet and how many washers are there?" — including ones
+whose answer is split across two posts. It will not answer "which dorm is
+best", because the documents don't contain that answer and neither does the
+system.
+
+Questions the corpus doesn't cover are refused before the model is ever called.
+A relevance check in `gate.py` compares the closest retrieved chunk against a
+cutoff of 0.55 and stops there if nothing came back close enough, so asking it
+about diesel engines gets "I don't have enough information about that" rather
+than a confident guess.
 
 ## Chunking Strategy
 
 **Chunk size:** 800
-**Overlap:** 0 
+**Overlap:** 0
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
+I measured all 88 documents in `campus_life` before deciding anything: shortest
+178 characters, median 309, longest 549. Not one reaches 800. They are short
+forum-style posts, one topic each — `course_biol_160_workload.txt` is four
+sentences about how many hours BIOL 160 takes, and nothing else.
 
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
+That measurement decided it for me: the right number of chunks per document
+here is one. Splitting a 309-character post in half would separate a claim from
+the sentence that qualifies it, and the starter's 800-character window already
+leaves these documents whole, so there was nothing to fix. I set overlap to 0
+for the same reason — overlap exists to rescue sentences cut at arbitrary
+positions, and nothing here is being cut.
 
-     Milestone 3. -->
+**I changed my mind once, and it cost me.** I wrote `split_documents` to split
+on `##` Markdown headings, because I had been reading the `city_guides` corpus,
+whose 14 documents are sectioned guides. Then I switched to `campus_life` and
+did not re-check the assumption. Zero of its 88 documents contain a `##`
+heading, so `re.split(r"(?m)^(?=## )", doc.text)` finds no split point and
+returns the whole document. I verified this by running both functions over the
+same corpus and comparing every chunk: `split_documents` and `fallback_split`
+produce byte-identical output, 88 chunks averaging 317 characters.
 
-
-My 14 documents are Markdown guides divided into `##` sections. I measured all 98 sections across the corpus: median 284 characters, longest 711, and not one of them exceeds 800.
-
-The starter chunker doesn't see those sections. It counts 800 characters from the start of the whole document and cuts there, which lands in the middle of a section. 35 of its 51 chunks (68%) begin mid-word. The shortest, `guide_eating.md#3`, is 24 characters: `"d Sundays and after 5pm."` — the tail of "Elder Ness has one shop, closed Sundays and after 5pm.", with the town name and the word "closed" cut away.
-
-So I split on `##` section boundaries instead. Because the longest section is 711, CHUNK_SIZE = 800 becomes a safety cap that never fires on this corpus. I set overlap to 0 because overlap exists to rescue sentences cut at arbitrary positions, and splitting on section boundaries never cuts a sentence.
+So my Milestone 3 chunker is, on this corpus, a no-op. The output is correct —
+one whole post per chunk is what these documents want — but I got there by
+accident, not by design. What I actually learned is that a chunking strategy
+is a claim about the documents, and mine was a claim about a different corpus.
 
 ## Sample Chunks
 
@@ -132,8 +154,6 @@ Best distance 0.4844, under the 0.55 cutoff.
 ``
 ```
 
-**My relevance cutoff:**
-
 **My relevance cutoff:** 0.55
 
 I ran all ten questions through `app.py retrieve`, which reports distances
@@ -171,19 +191,27 @@ and still refuses all five out-of-scope questions by a margin of 0.27.
 | How do I change the oil in a diesel engine? | No | 0.9340 |
 
 ## How I Used AI
+## How I Used AI
 
-<!-- Two specific moments. For each: what you asked for, what came back, and
-     what you changed about it.
+**1.** I asked Claude to help me test a threshold value before committing to it,
+and it gave me `python app.py retrieve "..." --threshold 0.55`. That failed with
+`error: unrecognized arguments: --threshold 0.55`. I checked the table in
+`RUNNING.md` and `--threshold` is only wired to `ask`, not `retrieve` —
+`cmd_retrieve` in `app.py` calls `gate.check(results)` with no threshold
+argument, so it always reads `config.THRESHOLD`. I edited `config.py` directly
+instead. I also realised the test wasn't needed: the gate is `best < threshold`,
+and I already knew the best distance was 0.4844.
 
-     "I asked Claude to write the chunking function from my notes. It ignored
-     the overlap, so I added that myself" is the level of detail we're after.
-     "I used AI to help me code" is not.
+**2.** I asked why `course_cs_210.txt`, a Data Structures course, came back as
+the second result for my question about which study rooms have whiteboards.
+Claude said it was because my question contained "210" and collided with the
+course number. My question doesn't contain "210" — it's "For students need
+whiteboards, which study rooms should they go?", with no number in it. When I
+opened the file, it had no "whiteboard" and no "room" in it either. The real
+answer was that nothing pulled it in: only one of my 88 documents is about study
+rooms, and retrieval had to return five, so it padded the list with whatever was
+least far. I now read 0.56 as "not related" rather than "somewhat related".
 
-     Milestone 5. -->
-
-**1.**
-
-**2.**
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
