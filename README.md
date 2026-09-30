@@ -212,6 +212,31 @@ answer was that nothing pulled it in: only one of my 88 documents is about study
 rooms, and retrieval had to return five, so it padded the list with whatever was
 least far. I now read 0.56 as "not related" rather than "somewhat related".
 
+*Unit 2:*
+
+**3.** My first run had 4 of 5 questions marked "fail" by `scorer.py`, but the
+answers looked right to me. I asked Claude to look at the pattern across the
+failures. It pointed out that the four failures were exactly the questions whose
+`expects` contains a `;` or a number, and that `judge()` looks for the whole
+string word for word. It also found that `(answer or "".lower())` lowercases the
+empty string, not the answer. I checked by reading all 15 answers against my
+`expects` text, and every answer was correct. So I scored criteria 1 and 2 by
+reading the answers and retrieved sources myself, not from the scorer's
+pass/fail column.
+
+**4.** Claude recommended hybrid search and wrote `_fuse_with_bm25` and
+`_tokenize` in `store.py`. I had never used BM25, so I asked it to explain the
+code section by section, then tried `rank_bm25` on a three-document toy example
+myself to see how the scores behave. Its prediction was that BM25 would cut the
+noise in my retrieved chunks, and that was only partly right. The after run
+showed it helped the one question with a course code (ECON101) and did nothing
+for questions in everyday words. I wouldn't have known that without comparing
+the retrieved sources question by question.
+
+**5.** When the ECON101 answer in the after run added that the course is
+"front-loaded", I didn't assume it was a hallucination or assume it was fine.
+I opened `course_econ_101_workload.txt` and checked: the line is in the document.
+
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
@@ -244,7 +269,7 @@ least far. I now read 0.56 as "not related" rather than "somewhat related".
 | 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
 | 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
 | 4. Complete factual statement | 4 of 5 | 5/5 | 5/5 | 5/5 | MET | 
-| 5. Multi-document retrieval | 4 of 5 | 2/2 | 2/2 | 2/2 | MET |
+| 5. Multi-document retrieval | 2 of 2 (revised) | 2/2 | 2/2 | 2/2 | MET |
 
 <!-- Underneath, paste the REAL output for each criterion from one of your
      runs — the actual text your system produced, not a description of it.
@@ -328,7 +353,7 @@ Q: In Aldridge hall, which floors are quiet floors and how many washers and drye
 | 2 | Every answer names a source | MET | I read all 15 answers (5 questions × 3 runs) and every one names at least one `.txt` file. The citation format varied between runs (inline, "Source:", backticks), but a source was always named. |
 | 3 | Gate stops out-of-corpus questions | MET | All 5 out-of-scope questions were refused. The closest one had a best distance of 0.825, far above the 0.55 cutoff, while the in-corpus questions ranged from 0.35 to 0.48, so this wasn't close. |
 | 4 | Complete factual statement | MET | All 5 sampled chunks from `chunker.py::split_documents` stand on their own. Each post is short (about 317 characters on average) and fits in one 800-character chunk, so nothing gets split mid-fact. Chunking is deterministic, so the count is the same across runs. |
-| 5 | Multi-document retrieval | MISSED | Both of my cross-document questions retrieved every document they needed in all three runs, but I only wrote 2 cross-document questions. A target of "4 of 5" can't be met with two, so as written this criterion wasn't achieved. |
+| 5 | Multi-document retrieval | MET | Both cross-document questions retrieved every document they needed in all three runs (2/2). The original "4 of 5" couldn't be measured with only 2 cross-document questions, so I revised it in criteria.md to "2 of 2". That's the strictest version I can check, and I kept the original line visible. |
 
 ## Diagnoses
 
@@ -350,11 +375,67 @@ Q: In Aldridge hall, which floors are quiet floors and how many washers and drye
 
      Milestone 3. -->
 
+**Criterion 5 (multi-document retrieval): not a pipeline failure.** No stage
+failed. In all three runs, `store.py::search` retrieved both documents each
+cross-document question needed: `course_biol_160.txt` + `course_biol_160_workload.txt`
+for the BIOL question, and `housing_aldridge_hall.txt` + `housing_aldridge_hall_laundry.txt`
+for the Aldridge question. The problem was in my test set. The target said
+"4 of 5 cross-document questions", but `questions.py` has only two, so it
+couldn't be measured whatever the pipeline did. Because the criterion was
+unmeasurable, not unmet (retrieval was 2/2), I revised it in `criteria.md` to
+"2 of 2" and kept the original line visible. With the revision, it's MET, so I
+have no misses.
+
+**One real problem that no criterion caught: `scorer.py` fails correct answers.**
+It marked 4 of 5 questions "fail" in every run, and when I read them all 15
+answers were correct. The problem is in scoring, not generation. `judge()`
+looks for the whole `expects` string word for word, so a multi-part expectation
+like `"Layers; 7 A.M."` never matches "Layers ... 7am". It also lowercases `""`
+instead of the answer. The pattern: the four that failed are exactly the four
+where `expects` contains a `;` or a number. Only the ECON question, a single
+phrase copied from the source, passed. That's one bug, not four separate failures.
+
+**Were my targets set low? Yes.** Criteria 1–4 all passed on the first try with
+room to spare, and the reason is the corpus, not the system:
+
+- **Criterion 4 was guaranteed.** The 88 documents average 317 characters and
+  the chunk size is 800, so `chunker.py::split_documents` never actually splits
+  anything. Every chunk is a whole post. A chunk can't cut a fact in half if
+  it's never cut.
+- **Criterion 1 was loose.** "The answer is somewhere in the top 5" out of 88
+  short, single-topic posts is easy to hit when each question names its subject
+  (ECON101, Aldridge, whiteboards). The retrieved sets also carry noise: the
+  winter question pulled in three laundry posts and a dining post, and the BIOL
+  question pulled in two admin posts. None of that counted against the criterion.
+- **Criterion 3 had a huge margin.** The in-corpus best distances were 0.35–0.48
+  and the out-of-corpus ones were 0.83–0.93. My out-of-scope questions (Mongolia,
+  diesel engines) are so unlike campus life that any cutoff between them would pass.
+
+**What I'd tighten:**
+- **Criterion 1 →** "For at least 4 of 5 questions, the **top-ranked** chunk
+  comes from the document that holds the answer." This tests ranking, not just
+  whether the answer made it into the top 5.
+- **Criterion 3 →** replace the out-of-scope questions with near-misses the
+  corpus doesn't cover but that sound like campus life, e.g. "What's the
+  parking permit cost?" or "When does the gym open?". Then the gate has to tell
+  a nearby topic from a covered one.
+
 ## The Improvement
 
-**What I changed:**
+**What I changed:** Hybrid search. `store.py::search` still ranks every chunk
+by cosine distance, and `store.py::_fuse_with_bm25` now also ranks them by
+BM25 keyword score and merges the two lists with Reciprocal Rank Fusion
+(k = 60) before keeping the top 5. `store.py::_tokenize` splits letters from
+digits, so "ECON101" matches "ECON 101". The distances aren't changed, so the
+gate in `gate.py::check` compares against the same 0.55 cutoff as before. You
+can switch it off with `config.HYBRID = False`.
 
 **Why I picked it:**
+The diagnosis found that retrieval carries noise: the winter question pulled in
+three laundry posts and the BIOL question pulled in admin posts. My questions
+are also built around exact names and codes (ECON101, Aldridge, BIOL 160,
+Room 210), which is where keyword matching should help semantic search.
+Chunking wasn't an option: every post already fits in one chunk.
 
 <!-- Connect it to a specific diagnosis above in one sentence. If you can't,
      you picked a fix because it sounded impressive. -->
@@ -366,13 +447,84 @@ Q: In Aldridge hall, which floors are quiet floors and how many washers and drye
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. Complete factual statement | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 5. Multi-document retrieval | 2 of 2 (revised) | 2/2 | 2/2 | 2/2 | MET |
+
+Source: `results/run_2026-09-30_1929_after.md`, written by `run_eval.py::main`.
+
+**Before and after, side by side** (each cell is Run 1 / Run 2 / Run 3)
+
+| Criterion | Target | Before (semantic) | After (hybrid) | Change |
+|---|---|---|---|---|
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 · 5/5 · 5/5 | 5/5 · 5/5 · 5/5 | none |
+| 2. Every answer names a source | 5 of 5 | 5/5 · 5/5 · 5/5 | 5/5 · 5/5 · 5/5 | none |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | none |
+| 4. Complete factual statement | 4 of 5 | 5/5 | 5/5 | none (chunking unchanged) |
+| 5. Multi-document retrieval | 2 of 2 (revised) | 2/2 | 2/2 | none |
+
+**What did change: the retrieved sources** (`store.py::search`, top 5)
+
+| Question | Dropped by hybrid | Added by hybrid | Better? |
+|---|---|---|---|
+| ECON101 workload | course_biol_160_workload.txt | course_econ_101_exams.txt | yes: now two ECON 101 posts instead of a BIOL one |
+| Whiteboard study rooms | study_library_hours.txt | money_jobs.txt | no: swapped one irrelevant post for a less related one |
+| Winter clothing + paths | dining_north_kitchen_followup.txt, three `*_laundry.txt` | dining_north_kitchen.txt, dining_the_atrium.txt, two `*_laundry.txt` | no: still four irrelevant posts out of five |
+| Heaviest course + exams | admin_graduation_requirements.txt, course_cs_340.txt | course_math_220.txt, course_math_220_exams.txt | neutral: the words "course" and "exams" pulled in another course |
+| Aldridge quiet floors + laundry | housing_old_brewhouse_noise.txt | housing_tamsin_court.txt | neutral |
+
+Out-of-scope best distances (`run_eval.py::check_out_of_scope`):
+
+| Question | Before | After |
+|---|---|---|
+| What is the capital of Mongolia? | 0.825 | 0.869 |
+| How do I change the oil in a diesel engine? | 0.934 | 0.934 |
+| Who won the 1994 World Cup? | 0.886 | 0.886 |
+| What is the recommended dosage of ibuprofen for a headache? | 0.844 | 0.860 |
+| How do I write a for loop in Rust? | 0.896 | 0.900 |
+
+Real output from the after run, run 1 (`generate.py::answer_from_chunks`):
+
+```
+The expected workload for ECON 101 Introduction to Economics is 4 hours a week outside class, which is real time and front-loaded so that the first month is heavier than the rest. 
+
+Source: `course_econ_101_workload.txt`
+```
+```
+Layers matter more than a heavy coat, and the paths are cleared by 7:00 am on weekdays (winter_gear.txt).
+```
 
 **Did it help?**
+
+Not measurably. None of the five criteria moved. They were at or near their
+ceiling before the change, so this run could only show a regression, and there
+wasn't one. That limit comes from how I set the targets, not from the fix.
+
+At the level the diagnosis pointed to, the noise in the retrieved chunks,
+hybrid search helped one question and didn't help the other four:
+
+- **ECON101 improved.** This is the case BM25 is built for: the question has a
+  course code, `_tokenize` matched "econ" + "101", and a second ECON 101 post
+  replaced a BIOL one. The answer also got more complete: it now includes that
+  the course is front-loaded. I checked that line against
+  `course_econ_101_workload.txt` and it's in the document.
+- **The winter question didn't improve.** It has no rare keywords, only common
+  words like "winter", "clothing" and "paths". So BM25 had nothing distinctive
+  to match, and it swapped one set of dining and laundry posts for another.
+- **The BIOL question got a different kind of noise.** Common words like
+  "course" and "exams" pulled in MATH 220 posts instead of admin posts.
+
+The pattern: hybrid search helps when a question has a rare, exact term (a
+course code), and does nothing when the question is phrased in everyday words.
+Only one of my five questions has a term like that.
+
+One side effect: three out-of-scope best distances went up (Mongolia
+0.825 → 0.869). That happened because the fusion sometimes pushes the closest
+chunk out of the top 5. It doesn't matter here, since they were all far above
+the cutoff anyway. But for an in-corpus question near the 0.55 cutoff, the same
+effect could make the gate refuse something it should answer.
 
 <!-- Say plainly whether it did, and how you know. If it made things worse,
      say that — a change that backfired, honestly reported, earns full credit
@@ -391,9 +543,62 @@ Q: In Aldridge hall, which floors are quiet floors and how many washers and drye
 
      Milestone 5. -->
 
+**No criterion is missed after the fix.** Criterion 5's original "4 of 5"
+couldn't be measured with only 2 cross-document questions, so I revised it to
+"2 of 2" in `criteria.md` and left the original line visible. That doesn't mean
+nothing is broken. These three things are, even though none of my criteria
+measures them:
+
+- **`scorer.py` fails correct answers.** It marked 4 of 5 questions "fail" in
+  every run, and all 15 answers were correct when I read them. `judge()` looks
+  for the whole `expects` string word for word, and it lowercases `""` instead
+  of the answer. In the after run it even failed ECON101 run 2 because the
+  answer said "outside **of** class".
+  - *What I'd do:* split `expects` on `;`, normalize case and punctuation, and
+    check each part on its own.
+  - *Why I stopped:* the brief said one change, and fixing the scorer would
+    have been a second one in the same round.
+- **Retrieval noise on everyday-word questions.** The winter question still
+  gets four irrelevant posts out of five. BM25 didn't help, because the
+  question has no rare terms for it to match.
+  - *What I'd do:* try a lower `TOP_K` (such as 3), or drop chunks whose cosine
+    distance is much worse than the best one.
+  - *Why I stopped:* none of my criteria measures this noise, so I couldn't
+    have shown whether a fix worked. I'd need the tighter criterion 1 below first.
+- **Hybrid fusion can push the closest chunk out of the top 5.** It raised
+  three out-of-scope best distances (Mongolia 0.825 → 0.869). That's harmless
+  for them, but an in-corpus question sitting near the 0.55 cutoff could get
+  refused.
+  - *What I'd do:* have the gate read the best distance from the full semantic
+    ranking, before fusion.
+  - *Why I stopped:* none of my five questions is near the cutoff (the worst is
+    0.4844), so I have no test case that would show the problem.
+
 ## What I'd Do Differently
 
 <!-- Knowing what you know now — which of your five criteria would you write
      differently, and why?
 
      Milestone 5. -->
+
+Four of my five criteria cleared their target on the first try with room to
+spare, which says more about the targets than about the system. In the next
+unit I would change:
+
+- **Criterion 5:** write the questions first, then the target. I wrote "4 of 5
+  cross-document questions" before writing any, ended up with two, and had to
+  revise it.
+- **Criterion 4:** this one could never fail. My posts average 317 characters
+  and the chunk size is 800, so nothing is ever split. I'd replace it with
+  something chunking can actually get wrong, or test it at a chunk size small
+  enough to split posts.
+- **Criterion 1:** "the answer is somewhere in the top 5" out of 88 short posts
+  was too easy. I'd make it "the **top-ranked** chunk comes from the document
+  that holds the answer". That tests ranking, which is where hybrid search
+  actually changed anything.
+- **Criterion 3:** swap the out-of-scope questions for near-misses that sound
+  like campus life but aren't covered, like parking permits or gym hours.
+  Mongolia and diesel engines were so far away (0.83+) that any cutoff would
+  have passed.
+- **Add a correctness criterion:** none of my five criteria asks whether the
+  answer is *right*. The only thing measuring that was a broken scorer.

@@ -45,6 +45,10 @@ TOP_K = 5               # how many chunks to pull back per question
 # Most corpora land somewhere between 0.45 and 0.75.
 THRESHOLD = 0.55
 
+# Hybrid search: combine keyword matching (BM25) with meaning matching, merged
+# by Reciprocal Rank Fusion. False = semantic only (the "before" setup).
+HYBRID = True
+
 
 # ─── Models ──────────────────────────────────────────────────────────────────
 # Embeddings run on your own machine and cost no API quota.

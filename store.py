@@ -199,10 +199,9 @@ def search(
             f"No index called '{name}'. Run `python app.py index` first."
         ) from exc
 
-    raw = collection.query(
-        query_embeddings=embed([question]),
-        n_results=min(top_k, collection.count()),
-    )
+    # Hybrid ranks every chunk semantically so each one has a distance to fuse.
+    n = collection.count() if config.HYBRID else min(top_k, collection.count())
+    raw = collection.query(query_embeddings=embed([question]), n_results=n)
 
     results: list[Result] = []
     for text, meta, distance in zip(
@@ -217,7 +216,50 @@ def search(
                 produced_by=str(meta.get("produced_by", "unknown")),
             )
         )
-    return results
+
+    if config.HYBRID:
+        results = _fuse_with_bm25(question, results)
+    return results[:top_k]
+
+
+# Reciprocal Rank Fusion constant. 60 is the value from the original RRF paper;
+# it stops the #1 result of either list from drowning out everything else.
+RRF_K = 60
+
+
+def _tokenize(text: str) -> list[str]:
+    """
+    Lowercase words, with letters and digits split apart.
+
+    The split is what lets "ECON101" in a question match "ECON 101" in a
+    document: both become ["econ", "101"].
+    """
+    import re
+
+    return re.findall(r"[a-z]+|[0-9]+", text.lower())
+
+
+def _fuse_with_bm25(question: str, semantic: list[Result]) -> list[Result]:
+    """
+    Re-rank semantic results by also scoring them with BM25 keyword matching.
+
+    Each chunk gets 1/(RRF_K + rank) from each list, and the two are added. A
+    chunk that ranks well on both meaning and exact words rises to the top.
+
+    Distances are left untouched — they are still cosine distances, so the
+    relevance gate in gate.py means exactly what it did before.
+    """
+    from rank_bm25 import BM25Okapi
+
+    bm25 = BM25Okapi([_tokenize(r.text) for r in semantic])
+    scores = bm25.get_scores(_tokenize(question))
+    keyword_order = sorted(range(len(semantic)), key=lambda i: -scores[i])
+
+    fused = {i: 1 / (RRF_K + rank) for rank, i in enumerate(range(len(semantic)))}
+    for rank, i in enumerate(keyword_order):
+        fused[i] += 1 / (RRF_K + rank)
+
+    return [semantic[i] for i in sorted(fused, key=lambda i: -fused[i])]
 
 
 def index_exists(corpus: str | None = None, variant: str = "default") -> bool:
