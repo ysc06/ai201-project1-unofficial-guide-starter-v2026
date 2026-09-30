@@ -190,7 +190,7 @@ and still refuses all five out-of-scope questions by a margin of 0.27.
 | How do I write a for loop in Rust? | No | 0.8960 |
 | How do I change the oil in a diesel engine? | No | 0.9340 |
 
-## How I Used AI
+
 ## How I Used AI
 
 **1.** I asked Claude to help me test a threshold value before committing to it,
