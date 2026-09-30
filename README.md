@@ -243,8 +243,8 @@ least far. I now read 0.56 as "not related" rather than "somewhat related".
 | 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
 | 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
 | 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
-| 4. Complete factual statement | 4 of 5 | | | | |
-| 5. Multi-document retrieval | 4 of 5 | 2/2 | 2/2 | 2/2 | |
+| 4. Complete factual statement | 4 of 5 | 5/5 | 5/5 | 5/5 | MET | 
+| 5. Multi-document retrieval | 4 of 5 | 2/2 | 2/2 | 2/2 | MET |
 
 <!-- Underneath, paste the REAL output for each criterion from one of your
      runs — the actual text your system produced, not a description of it.
@@ -324,11 +324,11 @@ Q: In Aldridge hall, which floors are quiet floors and how many washers and drye
 
 | # | Criterion | Verdict | How I decided |
 |---|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
-| 4 |  |  |  |
-| 5 |  |  |  |
+| 1 | Retrieved chunk contains the answer | MET | In all three runs, the file holding each answer appeared in the top-5 retrieved sources for 5 of 5 questions, above the 4-of-5 target. `scorer.py` marked four questions "fail", but it checks answer wording, not retrieval, so I judged this criterion from the sources lists. |
+| 2 | Every answer names a source | MET | I read all 15 answers (5 questions × 3 runs) and every one names at least one `.txt` file. The citation format varied between runs (inline, "Source:", backticks), but a source was always named. |
+| 3 | Gate stops out-of-corpus questions | MET | All 5 out-of-scope questions were refused. The closest one had a best distance of 0.825, far above the 0.55 cutoff, while the in-corpus questions ranged from 0.35 to 0.48, so this wasn't close. |
+| 4 | Complete factual statement | MET | All 5 sampled chunks from `chunker.py::split_documents` stand on their own. Each post is short (about 317 characters on average) and fits in one 800-character chunk, so nothing gets split mid-fact. Chunking is deterministic, so the count is the same across runs. |
+| 5 | Multi-document retrieval | MISSED | Both of my cross-document questions retrieved every document they needed in all three runs, but I only wrote 2 cross-document questions. A target of "4 of 5" can't be met with two, so as written this criterion wasn't achieved. |
 
 ## Diagnoses
 
