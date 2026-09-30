@@ -240,15 +240,76 @@ least far. I now read 0.56 as "not related" rather than "somewhat related".
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. Complete factual statement | 4 of 5 | | | | |
+| 5. Multi-document retrieval | 4 of 5 | 2/2 | 2/2 | 2/2 | |
 
 <!-- Underneath, paste the REAL output for each criterion from one of your
      runs — the actual text your system produced, not a description of it.
      Name the file and function that produced it. -->
+
+Real output below is from run 1 of `results/run_2026-09-30_1620.md`, written
+by `run_eval.py::main`. Retrieval is `store.py::search` over chunks from
+`chunker.py::split_documents` (top-k 5, cutoff 0.55).
+
+**Criterion 1 — retrieved chunk contains the answer** (`store.py::search`)
+
+| Question | Source that holds the answer | In retrieved sources? |
+|---|---|---|
+| ECON101 workload | course_econ_101_workload.txt | yes |
+| Whiteboard study rooms | study_group_rooms.txt | yes |
+| Winter clothing + path clearing | winter_gear.txt | yes |
+| Heaviest first-year course + exams | course_biol_160.txt, course_biol_160_workload.txt | yes |
+| Aldridge quiet floors + laundry | housing_aldridge_hall.txt, housing_aldridge_hall_laundry.txt | yes |
+
+```
+Q: What is the expected workload for ECON101
+- Best distance: 0.3504 (passed the gate)
+- Sources retrieved: course_biol_160_workload.txt, course_cs_210_workload.txt, course_econ_101_workload.txt, course_engl_205_workload.txt, course_phys_130_workload.txt
+```
+
+**Criterion 2 — every answer names a source** (`generate.py::answer_from_chunks`, called from `run_eval.py::run_once`)
+
+```
+The expected workload for ECON 101 Introduction to Economics is 4 hours a week outside class (course_econ_101_workload.txt).
+```
+```
+Students needing whiteboards should go to Rooms 210 and 211, as they have whiteboards that actually erase. (Source: study_group_rooms.txt)
+```
+```
+Layers matter more than a heavy coat during the winter, and the paths are cleared by 7am on weekdays. This information comes from the document `winter_gear.txt`.
+```
+```
+BIOL 160 Cell Biology is the heaviest first-year course by reputation, and it has four unit tests and a cumulative final per semester (from course_biol_160_workload.txt and course_biol_160.txt).
+```
+```
+In Aldridge Hall, floors 3 and 4 are quiet floors, and the building has eight washers and six dryers (source: `housing_aldridge_hall.txt`, `housing_aldridge_hall_laundry.txt`).
+```
+
+**Criterion 3 — gate stops out-of-corpus questions** (`run_eval.py::check_out_of_scope`, cutoff 0.55)
+
+| Out-of-scope question | Best distance | Gate |
+|---|---|---|
+| What is the capital of Mongolia? | 0.825 | refused |
+| How do I change the oil in a diesel engine? | 0.934 | refused |
+| Who won the 1994 World Cup? | 0.886 | refused |
+| What is the recommended dosage of ibuprofen for a headache? | 0.844 | refused |
+| How do I write a for loop in Rust? | 0.896 | refused |
+
+**Criterion 5 — multi-document retrieval** (`store.py::search`)
+
+```
+Q: Which course is the heaviest first-year course by reputation and how many exams does it have per semester?
+- Best distance: 0.4844 (passed the gate)
+- Sources retrieved: admin_graduation_requirements.txt, admin_pass_fail_option.txt, course_biol_160.txt, course_biol_160_workload.txt, course_cs_340.txt
+```
+```
+Q: In Aldridge hall, which floors are quiet floors and how many washers and dryers does it have?
+- Best distance: 0.4139 (passed the gate)
+- Sources retrieved: housing_aldridge_hall.txt, housing_aldridge_hall_laundry.txt, housing_aldridge_hall_noise.txt, housing_old_brewhouse_noise.txt, housing_tamsin_court_noise.txt
+```
 
 ## Verdicts
 
